@@ -233,4 +233,4 @@ with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
 
 if __name__ == "__main__":
     print("Starting Personal Health Agent UI...")
-    demo.launch(server_name="127.0.0.1", server_port=7861, share=False)
+    demo.launch(server_name="0.0.0.0", server_port=7860)

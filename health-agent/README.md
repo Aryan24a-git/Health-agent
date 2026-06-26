@@ -72,7 +72,7 @@ MediGuard prioritizes user privacy and data security above all. The application 
 
 ## Live Demo
 
-[Link to Hugging Face Space](https://huggingface.co/spaces/YOUR_URL_HERE) *(I will fill in the URL)*
+[Link to Hugging Face Space](https://huggingface.co/spaces/Aryan24a-face/health-concierge-agent)
 
 ## Course Concepts Demonstrated
 
