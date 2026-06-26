@@ -1,3 +1,8 @@
+"""
+Audit Tool - Security Component
+
+Provides auditing capabilities by safely logging tool executions without writing any Protected Health Information (PHI) to disk.
+"""
 import os
 from datetime import datetime
 

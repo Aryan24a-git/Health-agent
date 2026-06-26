@@ -64,15 +64,20 @@ def chat_interface(user_message: str, history: list):
     Incorporates sanitization and rate limiting.
     """
     if not rate_limiter.consume():
-        return "⚠️ Rate limit exceeded. Please wait a moment before sending another message."
+        response = "⚠️ Rate limit exceeded. Please wait a moment before sending another message."
+        history.append((user_message, response))
+        return "", history
         
     clean_message = sanitize_input(user_message)
     
     try:
         # Mock orchestrator behavior for the demo.
-        return f"🤖 [Orchestrator routed query]: '{clean_message}'\n\n*(Waiting for live ADK model response - backend integration required)*"
+        response = f"🤖 [Orchestrator routed query]: '{clean_message}'\n\n*(Waiting for live ADK model response - backend integration required)*"
     except Exception as e:
-        return f"Error routing to orchestrator: {str(e)}"
+        response = f"Error routing to orchestrator: {str(e)}"
+    
+    history.append((user_message, response))
+    return "", history
 
 def refresh_sidebar():
     """
@@ -102,10 +107,45 @@ def export_summary():
     except Exception as e:
         return f"Export failed: {str(e)}"
 
+def clear_chat():
+    return [], ""
+
+# Custom CSS for the disclaimer banner and header
+custom_css = """
+.disclaimer-banner {
+    background-color: #ff4d4d;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+.header-title {
+    font-size: 2.5em;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 5px;
+}
+.header-subtitle {
+    text-align: center;
+    color: #7f8c8d;
+    margin-bottom: 20px;
+}
+.footer-text {
+    text-align: center;
+    color: #95a5a6;
+    margin-top: 30px;
+    font-size: 0.9em;
+}
+"""
+
 # Build the Gradio UI
-with gr.Blocks() as demo:
-    gr.Markdown("# 🩺 Personal Health & Medication Manager")
-    gr.Markdown("### ⚠️ DISCLAIMER: This is not medical advice. Always consult your doctor.")
+with gr.Blocks(theme=gr.themes.Soft(), css=custom_css) as demo:
+    # --- HEADER SECTION ---
+    gr.Markdown("<div class='header-title'>MediGuard — Personal Health & Medication Agent</div>")
+    gr.Markdown("<div class='header-subtitle'>An AI-powered multi-agent system for medication reminders, health tracking, and drug safety checks</div>")
+    gr.Markdown("<div class='disclaimer-banner'>⚠️ This tool is not a substitute for professional medical advice. Always consult your doctor or pharmacist.</div>")
     
     # 1. Passphrase Modal Layer
     with gr.Row(visible=True) as setup_row:
@@ -118,33 +158,73 @@ with gr.Blocks() as demo:
             
     # 2. Main App Layout Layer (Hidden until passphrase is set)
     with gr.Row(visible=False) as main_app_row:
-        # Sidebar Panel
-        with gr.Column(scale=1):
-            gr.Markdown("### 📅 Due Reminders")
-            reminders_display = gr.Textbox(label="Today's Reminders", interactive=False, lines=5)
+        # Left column (wider, 65%)
+        with gr.Column(scale=65):
+            # Chat window
+            chatbot = gr.Chatbot(height=500, label="Agent Chat")
+            
+            # Text input box
+            user_input = gr.Textbox(
+                show_label=False,
+                placeholder="Try: 'Remind me to take metformin at 8am' or 'Log blood pressure 120/80' or 'Does aspirin interact with warfarin?'"
+            )
+            
+            # Action buttons
+            with gr.Row():
+                submit_btn = gr.Button("Submit", variant="primary")
+                clear_btn = gr.Button("Clear", variant="secondary")
+                
+        # Right column (35%)
+        with gr.Column(scale=35):
+            gr.Markdown("### 📅 Today's Reminders")
+            reminders_display = gr.Textbox(label="", interactive=False, lines=4, show_label=False)
             
             gr.Markdown("### 📊 Recent Health Logs")
-            logs_display = gr.Textbox(label="Last 3 Entries", interactive=False, lines=5)
+            logs_display = gr.Textbox(label="", interactive=False, lines=4, show_label=False)
             
-            refresh_btn = gr.Button("🔄 Refresh Sidebar")
-            export_btn = gr.Button("📥 Export Summary as Text")
+            export_btn = gr.Button("📥 Export Summary")
             export_display = gr.Textbox(label="Export Result", interactive=False, lines=5)
             
-        # Chat Interface Panel
-        with gr.Column(scale=3):
-            chatbot = gr.ChatInterface(fn=chat_interface)
-            
+    # --- FOOTER ---
+    gr.Markdown("<div class='footer-text'>Built with Google ADK + Gemini | MCP Server | Hugging Face Spaces<br>[GitHub Repository Link]</div>")
+
     # Wire up the UI events
     setup_btn.click(
         fn=set_passphrase, 
         inputs=pin_input, 
         outputs=[setup_status, setup_row, main_app_row]
-    )
-    refresh_btn.click(
+    ).then(
         fn=refresh_sidebar,
         inputs=[],
         outputs=[reminders_display, logs_display]
     )
+    
+    submit_btn.click(
+        fn=chat_interface,
+        inputs=[user_input, chatbot],
+        outputs=[user_input, chatbot]
+    ).then(
+        fn=refresh_sidebar,
+        inputs=[],
+        outputs=[reminders_display, logs_display]
+    )
+    
+    user_input.submit(
+        fn=chat_interface,
+        inputs=[user_input, chatbot],
+        outputs=[user_input, chatbot]
+    ).then(
+        fn=refresh_sidebar,
+        inputs=[],
+        outputs=[reminders_display, logs_display]
+    )
+    
+    clear_btn.click(
+        fn=clear_chat,
+        inputs=[],
+        outputs=[chatbot, user_input]
+    )
+    
     export_btn.click(
         fn=export_summary,
         inputs=[],
@@ -153,4 +233,4 @@ with gr.Blocks() as demo:
 
 if __name__ == "__main__":
     print("Starting Personal Health Agent UI...")
-    demo.launch(server_name="127.0.0.1", server_port=7861, share=False, theme=gr.themes.Soft(primary_hue="teal"))
+    demo.launch(server_name="127.0.0.1", server_port=7861, share=False)
